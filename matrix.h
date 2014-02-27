@@ -31,11 +31,11 @@ public:
 		{
 			for (int j = 0; j < _column; j++)
 			{
-				M[i][j] = 0;
+				M[i][j] = 0.0;
 			}
 		}
 	}
-	Matrix(const int n, const int m, double A[3][3], char x)
+	Matrix(const int n, const int m, double* A, char x)
 	{
 		_name = x;
 		_row = n; 
@@ -46,9 +46,8 @@ public:
 		}
 
 		for (int i = 0; i < n; i++){
-			for (int j = 0; j < m; j++)
-			{
-				M[i][j] = A[i][j];
+			for (int j = 0; j < m; j++){
+				M[i][j] = *(A + i*m + j);
 			}
 		}
 	}
@@ -68,11 +67,9 @@ public:
 
 	~Matrix(){
 		for (int count = 0; count < _row; count++)
-			delete[]M[count];
+			delete[] M[count];
 		
 		//delete[]M;  ??
-
-		std::cout << "I'm guf!" << std::endl;
 	}
 	//=============================================================================== перегрузка операторов
 
@@ -82,14 +79,17 @@ public:
 			return *this;
 		}
 
-		if (_row == X._row && _column == X._column)
-		{
-			for (int i = 0; i < _row; i++)
-			{
-				for (int j = 0; j < _column; j++)
-				{
-					M[i][j] = X.M[i][j];
-				}
+		_row = X._row;
+		_column = X._column;
+		for (int count = 0; count < _row; count++)
+			delete[] M[count];
+		
+		for (int i = 0; i < _row; i++){
+			M[i] = new double[_column];
+		}
+		for (int i = 0; i < _row; i++){
+			for (int j = 0; j < _column; j++){
+				M[i][j] = X.M[i][j];
 			}
 		}
 		return *this;
@@ -107,20 +107,7 @@ public:
 	Matrix& operator * (const Matrix& X)
 	{
 		if (_column == X._row){
-
-			double **Arr = new double*[_row];
-
-			for (int i = 0; i < _row; i++){
-				Arr[i] = new double[X._column];
-			}
-
-			for (int i = 0; i < _row; i++)
-			{
-				for (int j = 0; j < X._column; j++)
-				{
-					Arr[i][j] = 0;
-				}
-			}
+			Matrix T(_row, X._column, 'T');
 
 			for (int i = 0; i < _row; i++)
 			{
@@ -128,50 +115,29 @@ public:
 				{
 					for (int r = 0; r < _column; r++)
 					{
-						Arr[i][j] += M[i][r] * X.M[r][j];
-						/*
-						for (int l = 0; l < _row; l++) // только если по размерам совпадает с первой матрицей
-						{
-						for (int m = 0; m < X._column; m++)
-						{
-						std::cout<<M[l][m]<<" ";
-						}
-						std::cout << std::endl;
-						}
-						*/
-						std::cout << std::endl;
+						T.M[i][j] += M[i][r] * X.M[r][j];
 					}
 				}
 			}
-
-			for (int i = 0; i < _row; i++) // только если по размерам совпадает с первой матрицей
-			{
-				for (int j = 0; j < X._column; j++)
-				{
-					M[i][j] = Arr[i][j];
-				}
-			}
+			*this = T;
 		}
 		return *this;
 	}
 	//============================================================
 	void print(){
-		for (int i = 0; i < _row; i++)
-		{
-			for (int j = 0; j < _column; j++)
-			{
-				std::cout << M[i][j]<<" ";
+		for (int i = 0; i < _row; i++){
+			for (int j = 0; j < _column; j++){
+				std::cout<<M[i][j]<<" ";
 			}
-			std::cout<<std::endl;
+			std::cout << std::endl;
 		}
-		std::cout << std::endl;
 	}
 
 	void full(const int k)
 	{
-		for (int i = 0; i < _row; i++)
+		for (int i = 0; i < _column; i++)
 		{
-			for (int j = 0; j < _column; j++)
+			for (int j = 0; j < _row; j++)
 			{
 				M[i][j] = k;
 			}
@@ -184,7 +150,7 @@ public:
 		this->full(0);
 		for (int i = 0; i < _row; i++)
 		{
-			M[i][i] = 1;
+			M[i][i] = 1.0;
 		}
 		return;
 	}
@@ -215,10 +181,10 @@ public:
 					}
 				}
 				if (i != num1){
-					sign = -sign;
+					sign = !sign;
 				}
 				if (i != num2){
-					sign = -sign;
+					sign = !sign;
 				}
 				swapRows(i, num1);
 				swapColumn(i, num2);
@@ -236,6 +202,7 @@ public:
 		}
 		return true;
 	}
+	
 	void det(){
 		if (_row != _column) { 
 			std::cout << "Matrix isn't square!"; 
@@ -256,7 +223,6 @@ public:
 
 	int rank()
 	{
-		gaussian_elimination();
 		int r = 0;
 		
 		for (int i = 0; i < _column; i++)
