@@ -14,7 +14,7 @@ public:
 	double **M = new double*[_row];
 	char _name;
 	bool _istriangle;
-	int _kolvop;			//количество перестановок
+	double _sign;
 	Matrix(const int n, const int m, char x)
 	{
 		_row = n;											// !!
@@ -22,7 +22,7 @@ public:
 		_name = x;
 		_det = 1.0;
 		_istriangle = false;
-		_kolvop = 0;
+		_sign = 1.0;
 		for (int i = 0; i < _row; i++){
 			M[i] = new double[_column];
 		}
@@ -40,7 +40,7 @@ public:
 		_name = x;
 		_row = n; 
 		_column = m;
-		_kolvop = 0;
+
 		for (int i = 0; i < _row; i++){
 			M[i] = new double[_column];
 		}
@@ -62,7 +62,6 @@ public:
 					M[i][j] = X.M[i][j];
 				}
 			}
-			_kolvop = X._kolvop;
 		}
 	}
 
@@ -219,9 +218,6 @@ public:
 			for (int i = 0; i < _row; i++){
 				_det *= M[i][i];
 			}
-			if(_kolvop%2 != 0){
-				_det = -_det;
-			}
 			return;
 		}
 	}
@@ -242,7 +238,9 @@ public:
 		}
 		return r;
 	}
-	
+	void getInverseMatrix(Matrix& X){ 
+		
+	}
 	friend void PLU(Matrix&, Matrix&, Matrix&, Matrix&, Matrix&);
 
 	void swapRows(int x, int y){
@@ -252,7 +250,6 @@ public:
 			M[y][i] = tmp;
 			//this->print();
 		}
-		++_kolvop;
 		return;
 	}
 	void swapColumn(int x, int y)
@@ -264,7 +261,6 @@ public:
 			M[i][y] = tmp;
 			//this->print();
 		}
-		++_kolvop;
 		return;
 	}
 
@@ -315,7 +311,13 @@ void PLU (Matrix& A, Matrix&B, Matrix& P, Matrix& L, Matrix& U)			//работает пра
 
 		P.swapRows(i, num1);
 		P.swapColumn(i, num2);
-
+		
+		if (i != num1){
+			P._sign = - P._sign;
+		}
+		if (i != num2){
+			P._sign = -P._sign;
+		}
 		if (num1 == 0 && num2 == 0){
 			std::cout << "Matrix is singular"<<std::endl;
 			return;
@@ -345,54 +347,5 @@ void PLU (Matrix& A, Matrix&B, Matrix& P, Matrix& L, Matrix& U)			//работает пра
 	return;
 }
 
-void SLAU (Matrix& P, Matrix& L, Matrix& U, Matrix& x){
-	Matrix y(3, 1, 'y');
-	for(int i = 0; i < P._row; i++){
-		y.M[i][0] = P.M[i][0];
-		for(int j = 0; j <= i - 1; j++){
-			y.M[i][0] -= L.M[i][j] * y.M[j][0];
-		}
-	}
-
-	std::cout<< "Matrix y:"<<std::endl;
-	y.print();
-
-	for(int i = P._row - 1; i >= 0; i--){
-		x.M[i][0] = y.M[i][0];
-		for (int j = P._row - 1; j > i; j--){
-			x.M[i][0] -= U.M[i][j]*x.M[j][0]; 
-		}
-		x.M[i][0] /= U.M[i][i];
-	}
-	std::cout<< "Matrix x:"<<std::endl;
-	x.print();
-	
-	return;
-}
-
-double getNumber(Matrix& P1, Matrix& U1, Matrix& P2, Matrix& U2){
-	double x;
-
-	U1.det();
-	U2.det();
-
-	x = (P1._kolvop % 2 == 0 ? 1 : -1) * U1._det * (P2._kolvop % 2 == 0 ? 1 : -1) * U2._det;
-
-	return x;
-}
-
-void getInverseMatrix( Matrix& L, Matrix& U, Matrix& Inv){
-	for (int i = 0; i < L._row; i++){
-		Matrix Ei(L._row, 1, 'E');
-		Ei.M[i][0] = 1.0;
-		Matrix Ai(3, 1, 'A');
-		SLAU(Ei, L, U, Ai);
-		Ai.print();
-		for (int j = 0; j < L._row; j++){
-			Inv.M[j][i] = Ai.M[j][0];
-		}
-	}
-	return;
-}
 //void getLandUMatrix()
 #endif

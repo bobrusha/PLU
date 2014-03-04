@@ -10,7 +10,7 @@ int main(){
 
 	double Arr1[][3] = {{ 2, 1, 1 },
 						{ 1, -1, 0},
-						{ 3, -1, 2}}; // det = -4
+						{ 3, -1, 2}};
 	Matrix A(3, 3, &Arr1[0][0], 'A');
 	Matrix B(3, 3, 'B');
 	A.print();
@@ -23,8 +23,8 @@ int main(){
 	L.det();
 	U.det();
 	
-	std::cout << "a) det = " << (P._kolvop / abs(P._kolvop))* L._det * U._det<< std::endl;		// ò.ê. rank(A*B) = rank(A);
-	std::cout << "b) rank = " << L.rank()<< std::endl;
+	cout << "a) det = " << P._sign * L._det * U._det<< endl;		// ò.ê. rank(A*B) = rank(A);
+	cout << "b) rank = " << L.rank()<< endl;
 	
 	L.print();
 	U.print();
@@ -42,29 +42,35 @@ int main(){
 	//A.print();
 	//L.print();
 
-	//P = P*b;
-	//cout << "Matrix P:" << endl;
-	//P.print();
+	P = P*b;
+	
+	cout << "Matrix P:" << endl;
+	P.print();
 
-	//SLAU(P, L, U, x);
-	Matrix Inv(3, 3, 'I');
-	getInverseMatrix(L, U, Inv);
-	P*Inv;
-	Inv.print();
-	/*
-	Matrix a(3,1, 'a');
-	Matrix A1( 3, 3,'A');
-	for(int i = 0; i< A._row; i++){
-		Matrix Ai( 3, 1, 'A');
-		Matrix b( 3, 1, 'b');
-		b.M[i][0]= 1;
-		P = P*b;
-		SLAU(P, L, U, a, Ai);
-		for (int j = 0; j < A1._row; j++){
-			A1.M[j][i] = Ai.M[j][0];
+	for (int i = 0; i < b._row; i++){
+		double tmp = 0.0;
+		for (int j = 1; j <= i; j++){
+			cout << y.M[j-1][0] << " " << L.M[i][i] << " ";
+			tmp += y.M[j-1][0] * L.M[j-1][i];
 		}
+		y.M[i][0] = (P.M[i][0] - tmp)/L.M[i][i];
+		cout << y.M[i][0] << " ";
 	}
-	*/
+	
+	cout << "Matrix y:" << endl;
+	y.print();
+
+	for (int i = b._row - 1; i >= 0; i--){
+		double tmp = 0.0;
+		for (int j = b._column - 1; j >= i; j--){
+			tmp += x.M[i][0] * U.M[i][j];
+		}
+		x.M[i][0] = (y.M[i][0] - tmp) / U.M[i][i];
+	}
+	cout << "Matrix x:" << endl;
+	x.print();
+	
+
 	system("Pause");
 	return 0;
 
