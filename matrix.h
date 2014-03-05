@@ -6,23 +6,22 @@
 #define _MATRIX_
 #ifdef _MATRIX_
 
-class Matrix
-{
+class Matrix{
 public:
 	int _row, _column;
 	double _det;
 	double **M = new double*[_row];
 	char _name;
-	bool _istriangle;
-	double _sign;
+	bool _issingular;
+	int _kolvop;											//количество перестановок
 	Matrix(const int n, const int m, char x)
 	{
 		_row = n;											// !!
 		_column = m;
 		_name = x;
 		_det = 1.0;
-		_istriangle = false;
-		_sign = 1.0;
+		_issingular = false;
+		_kolvop = 0;
 		for (int i = 0; i < _row; i++){
 			M[i] = new double[_column];
 		}
@@ -40,7 +39,7 @@ public:
 		_name = x;
 		_row = n; 
 		_column = m;
-
+		_kolvop = 0;
 		for (int i = 0; i < _row; i++){
 			M[i] = new double[_column];
 		}
@@ -62,13 +61,14 @@ public:
 					M[i][j] = X.M[i][j];
 				}
 			}
+			_kolvop = X._kolvop;
 		}
 	}
 
 	~Matrix(){
 		for (int count = 0; count < _row; count++)
 			delete[] M[count];
-		
+		//std::cout << "You killed me! My name is " << _name << std::endl;
 		//delete[]M;  ??
 	}
 	//=============================================================================== перегрузка операторов
@@ -94,35 +94,7 @@ public:
 		}
 		return *this;
 	}
-	Matrix& operator * (const double x){									//ok
-		for (int i = 0; i < _row; i++)
-		{
-			for (int j = 0; j < _column; j++)
-			{
-				M[i][j] *= x;
-			}
-		}
-		return *this;
-	}
-	Matrix& operator * (const Matrix& X)
-	{
-		if (_column == X._row){
-			Matrix T(_row, X._column, 'T');
 
-			for (int i = 0; i < _row; i++)
-			{
-				for (int j = 0; j < X._column; j++)
-				{
-					for (int r = 0; r < _column; r++)
-					{
-						T.M[i][j] += M[i][r] * X.M[r][j];
-					}
-				}
-			}
-			*this = T;
-		}
-		return *this;
-	}
 	//============================================================
 	void print(){
 		for (int i = 0; i < _row; i++){
@@ -158,12 +130,13 @@ public:
 
 	friend Matrix& operator + (Matrix&, const Matrix&);
 	friend Matrix& operator - (Matrix&, const Matrix&);
-	
+	friend Matrix& operator * (const double, Matrix&);
+	friend Matrix& operator * (Matrix&, const Matrix&);
+
 	
 	bool gaussian_elimination()							//возвращает true - если чётное количество перестановок false - если нечётное
 	{
 		//this->print();
-		if (!_istriangle){
 			bool sign = true;
 
 			for (int i = 0; i < _row - 1; i++){				// поиск опорного элемента по всей матрице
@@ -198,10 +171,7 @@ public:
 					}
 				}
 			}
-			_istriangle = true;
 			return sign;
-		}
-		return true;
 	}
 	
 	void det(){
@@ -217,6 +187,9 @@ public:
 			_det = 1.0;
 			for (int i = 0; i < _row; i++){
 				_det *= M[i][i];
+			}
+			if(_kolvop%2 != 0){
+				_det = -_det;
 			}
 			return;
 		}
@@ -238,9 +211,7 @@ public:
 		}
 		return r;
 	}
-	void getInverseMatrix(Matrix& X){ 
-		
-	}
+	
 	friend void PLU(Matrix&, Matrix&, Matrix&, Matrix&, Matrix&);
 
 	void swapRows(int x, int y){
@@ -250,6 +221,7 @@ public:
 			M[y][i] = tmp;
 			//this->print();
 		}
+		++_kolvop;
 		return;
 	}
 	void swapColumn(int x, int y)
@@ -261,12 +233,43 @@ public:
 			M[i][y] = tmp;
 			//this->print();
 		}
+		++_kolvop;
 		return;
 	}
+	double getConditionNumber_1(Matrix& Inv){							//число обусловленности матрицы
+		double mtr_n = 0.0;				// норма исходной матрицы
+		double inv_n = 0.0;				// норма обратной матрицы
+		
+		for (int j = 0; j < _column; j++){
+			double tmp = 0.0;
+			for (int i = 0; i < _row; i++){
+				tmp += fabs(M[i][j]);
+			}
+			if (tmp > mtr_n)
+			{
+				mtr_n = tmp;
+			}
+		}
 
+		for (int j = 0; j < _column; j++){
+			double tmp = 0.0;
+			for (int i = 0; i < _row; i++){
+				tmp += fabs(Inv.M[i][j]);
+			}
+			if (tmp > inv_n)
+			{
+				inv_n = tmp;
+			}
+		}
+
+		std::cout << std::endl<< "e) Condition number =" << mtr_n*inv_n<<std::endl;
+		return (mtr_n*inv_n);
+	}
+
+	friend void solveLinerSystem(const Matrix& , const Matrix& , const Matrix& , Matrix&);
 };
 
-Matrix& operator + (Matrix& M1, const Matrix& M2){						// make all const
+Matrix& operator + (Matrix& M1, const Matrix& M2){						
 	for (int i = 0; i < M1._row; i++)
 	{
 		for (int j = 0; j < M1._column; j++)
@@ -287,7 +290,37 @@ Matrix& operator - (Matrix& M1, const Matrix& M2){						// make all const
 	return M1;
 }
 
-void PLU (Matrix& A, Matrix&B, Matrix& P, Matrix& L, Matrix& U)			//работает правильно вроде
+Matrix& operator * (const double left, Matrix& right){			
+	for (int i = 0; i < right._row; i++)
+	{
+		for (int j = 0; j < right._column; j++)
+		{
+			right.M[i][j] *= left;
+		}
+	}
+	return right;
+}
+
+Matrix& operator * (Matrix& left, const Matrix& right)
+{
+	if (left._column == right._row){
+		Matrix T (left._row, right._column, 'T');
+		for (int i = 0; i < left._row; i++)
+		{
+			for (int j = 0; j < right._column; j++)
+			{
+				for (int r = 0; r < left._column; r++)
+				{
+					T.M[i][j] += left.M[i][r] * right.M[r][j];
+				}
+			}
+		}
+		left = T;
+	}
+	return left;
+}
+
+void PLU ( Matrix& A, Matrix&B, Matrix& P, Matrix& L, Matrix& U)			//работает правильно вроде
 {
 	P.IdentityMatrix();
 	B = A;
@@ -300,7 +333,7 @@ void PLU (Matrix& A, Matrix&B, Matrix& P, Matrix& L, Matrix& U)			//работает пра
 			for (int k = i; k < A._row; k++){
 				if (fabs(A.M[j][k]) > tmp)
 				{
-					tmp = fabs(A.M[j][k]);
+					tmp = fabs(B.M[j][k]);
 					num1 = j;
 					num2 = k;
 				}
@@ -311,15 +344,10 @@ void PLU (Matrix& A, Matrix&B, Matrix& P, Matrix& L, Matrix& U)			//работает пра
 
 		P.swapRows(i, num1);
 		P.swapColumn(i, num2);
-		
-		if (i != num1){
-			P._sign = - P._sign;
-		}
-		if (i != num2){
-			P._sign = -P._sign;
-		}
+
 		if (num1 == 0 && num2 == 0){
 			std::cout << "Matrix is singular"<<std::endl;
+			A._issingular = true;
 			return;
 		}
 		for (int j = i + 1; j < A._row; j++) {
@@ -333,7 +361,7 @@ void PLU (Matrix& A, Matrix&B, Matrix& P, Matrix& L, Matrix& U)			//работает пра
 	// U - верхнетреугольная матрица
 	Matrix E(A._row, A._column, 'E');
 	E.IdentityMatrix();
-	//B.print();
+
 	B = B + E;
 	L.full(0); U.full(0);
 
@@ -343,9 +371,76 @@ void PLU (Matrix& A, Matrix&B, Matrix& P, Matrix& L, Matrix& U)			//работает пра
 			L.M[i][j] = B.M[i][j];
 		}
 	}
+
 	U = B - L;
+	std::cout << "PLU decomposition:" << std::endl;
+	std::cout << "Matrix P:" << std::endl;
+	P.print();
+	std::cout << "Matrix L:" << std::endl;
+	L.print();
+	std::cout << "Matrix U:" << std::endl;
+	U.print();
+
 	return;
 }
 
-//void getLandUMatrix()
+void solveLinerSystem(const Matrix& P, const Matrix& L, const Matrix& U, Matrix& x){
+	if (false){
+	}
+	else{
+		Matrix y(3, 1, 'y');
+		for (int i = 0; i < P._row; i++){
+			y.M[i][0] = P.M[i][0];
+			for (int j = 0; j <= i - 1; j++){
+				y.M[i][0] -= L.M[i][j] * y.M[j][0];
+			}
+		}
+
+		/*
+		std::cout << "Matrix y:" << std::endl;
+		y.print();
+		*/
+		for (int i = P._row - 1; i >= 0; i--){
+			x.M[i][0] = y.M[i][0];
+			for (int j = P._row - 1; j > i; j--){
+				x.M[i][0] -= U.M[i][j] * x.M[j][0];
+			}
+			x.M[i][0] /= U.M[i][i];
+		}
+		/*
+		std::cout << "Result:" << std::endl;
+		x.print();
+		*/
+	}
+	return;
+}
+
+double getNumber(Matrix& P1, Matrix& U1, Matrix& P2, Matrix& U2){
+	double x;
+
+	U1.det();
+	U2.det();
+
+	x = (P1._kolvop % 2 == 0 ? 1 : -1) * U1._det * (P2._kolvop % 2 == 0 ? 1 : -1) * U2._det;
+
+	return x;
+}
+
+void getInverseMatrix( const Matrix& L, const Matrix& U, Matrix& Inv){
+	for (int i = 0; i < L._row; i++){
+		Matrix Ei(L._row, 1, 'E');
+		Ei.M[i][0] = 1.0;
+		Matrix Ai(3, 1, 'A');
+		solveLinerSystem(Ei, L, U, Ai);
+		//Ai.print();
+		for (int j = 0; j < L._row; j++){
+			Inv.M[j][i] = Ai.M[j][0];
+		}
+	}
+
+	std::cout<<std::endl << "d) Inverse matrix:" << std::endl;
+	Inv.print();
+	return;
+}
+
 #endif
