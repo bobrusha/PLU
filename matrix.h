@@ -2,9 +2,12 @@
 #include <stdlib.h>
 #include <conio.h>
 #include <iostream>
+#include <vector>
 
 #define _MATRIX_
 #ifdef _MATRIX_
+
+double EPS = 10e-9;
 
 class Matrix{
 public:
@@ -66,10 +69,11 @@ public:
 	}
 
 	~Matrix(){
-		for (int count = 0; count < _row; count++)
-			delete[] M[count];
-		//std::cout << "You killed me! My name is " << _name << std::endl;
-		//delete[]M;  ??
+		//this->print();
+		for (int i = 0; i < _row; i++)
+			delete[] M[i];
+		_kolvop = 0;
+		std::cout << "You killed me! My name is " << _name << std::endl;
 	}
 	//=============================================================================== перегрузка операторов
 
@@ -78,7 +82,6 @@ public:
 		if (this == &X) {
 			return *this;
 		}
-
 		_row = X._row;
 		_column = X._column;
 		for (int count = 0; count < _row; count++)
@@ -106,11 +109,11 @@ public:
 		std::cout<<std::endl;
 	}
 
-	void full(const int k)
+	void full(const double k)
 	{
-		for (int i = 0; i < _column; i++)
+		for (int i = 0; i < _row; i++)
 		{
-			for (int j = 0; j < _row; j++)
+			for (int j = 0; j < _column; j++)
 			{
 				M[i][j] = k;
 			}
@@ -120,7 +123,7 @@ public:
 	void IdentityMatrix()
 	{
 		if (_row != _column) return;
-		this->full(0);
+		this->full(0.0);
 		for (int i = 0; i < _row; i++)
 		{
 			M[i][i] = 1.0;
@@ -132,47 +135,6 @@ public:
 	friend Matrix& operator - (Matrix&, const Matrix&);
 	friend Matrix& operator * (const double, Matrix&);
 	friend Matrix& operator * (Matrix&, const Matrix&);
-
-	
-	bool gaussian_elimination()							//возвращает true - если чётное количество перестановок false - если нечётное
-	{
-		//this->print();
-			bool sign = true;
-
-			for (int i = 0; i < _row - 1; i++){				// поиск опорного элемента по всей матрице
-				double tmp = 0.0;
-				int num1 = 0, num2 = 0;
-
-				for (int j = i; j < _column; j++)
-				{
-					for (int k = i; k < _row; k++){
-						if (fabs(M[j][k]) > tmp)
-						{
-							tmp = fabs(M[j][k]);
-							num1 = j;
-							num2 = k;
-						}
-					}
-				}
-				if (i != num1){
-					sign = !sign;
-				}
-				if (i != num2){
-					sign = !sign;
-				}
-				swapRows(i, num1);
-				swapColumn(i, num2);
-
-				tmp = M[i + 1][i];
-				for (int j = i + 1; j < _row; j++)
-				{
-					for (int k = i - 1; k < _column; k++){
-						M[j][k] -= (tmp * M[i][k]) / M[i][i];
-					}
-				}
-			}
-			return sign;
-	}
 	
 	void det(){
 		if (_row != _column) { 
@@ -199,9 +161,9 @@ public:
 	{
 		int r = 0;
 		
-		for (int i = 0; i < _column; i++)
+		for (int i = 0; i < _row; i++)
 		{
-			for (int j = 0; j < _row; j++)
+			for (int j = 0; j < _column; j++)
 			{
 				if (M[i][j]) { 
 					++r; 
@@ -215,11 +177,13 @@ public:
 	friend void PLU(Matrix&, Matrix&, Matrix&, Matrix&, Matrix&);
 
 	void swapRows(int x, int y){
-		for (int i = 0; i < _column; i++){
-			double tmp = M[x][i];
-			M[x][i] = M[y][i];
-			M[y][i] = tmp;
-			//this->print();
+		if (x != y){
+			for (int i = 0; i < _column; i++){
+				double tmp = M[x][i];
+				M[x][i] = M[y][i];
+				M[y][i] = tmp;
+				//this->print();
+			}
 		}
 		++_kolvop;
 		return;
@@ -313,8 +277,11 @@ Matrix& operator * (Matrix& left, const Matrix& right)
 				{
 					T.M[i][j] += left.M[i][r] * right.M[r][j];
 				}
+				if (fabs(T.M[i][j]) < EPS){ T.M[i][j] = 0.0; }
 			}
+			T.print();
 		}
+		T.print();
 		left = T;
 	}
 	return left;
@@ -326,26 +293,20 @@ void PLU ( Matrix& A, Matrix&B, Matrix& P, Matrix& L, Matrix& U)			//работает пр
 	B = A;
 	for (int i = 0; i < A._row; i++){
 		double tmp = 0.0;
-		int num1 = 0, num2 = 0;
+		int num = -1;
 
-		for (int j = i; j < A._column; j++)
-		{
-			for (int k = i; k < A._row; k++){
-				if (fabs(A.M[j][k]) > tmp)
-				{
-					tmp = fabs(B.M[j][k]);
-					num1 = j;
-					num2 = k;
-				}
+		for (int row = i; row < A._row; row++) {
+			if (fabs(B.M[row][i]) > tmp) {
+				tmp = fabs(A.M[row][i]);
+				num = row;
 			}
 		}
-		B.swapRows( i, num1);
-		B.swapColumn( i, num2);
+		if (num != -1){
+			B.swapRows(i, num);
+			P.swapRows(i, num);
+		}
 
-		P.swapRows(i, num1);
-		P.swapColumn(i, num2);
-
-		if (num1 == 0 && num2 == 0){
+		if (num == -1){
 			std::cout << "Matrix is singular"<<std::endl;
 			A._issingular = true;
 			return;
@@ -363,7 +324,7 @@ void PLU ( Matrix& A, Matrix&B, Matrix& P, Matrix& L, Matrix& U)			//работает пр
 	E.IdentityMatrix();
 
 	B = B + E;
-	L.full(0); U.full(0);
+	L.full(0.0); U.full(0.0);
 
 	for (int i = 0; i < A._row; i++){ L.M[i][i] = 1; }
 	for (int i = 0; i < A._row; i++){
@@ -384,11 +345,67 @@ void PLU ( Matrix& A, Matrix&B, Matrix& P, Matrix& L, Matrix& U)			//работает пр
 	return;
 }
 
-void solveLinerSystem(const Matrix& P, const Matrix& L, const Matrix& U, Matrix& x){
-	if (false){
+void GaussJordanElimination(Matrix& A, Matrix& b){
+	Matrix B (A._row, A._column, 'B');
+	B = A;
+	Matrix x (b._row, b._column, 'x');
+	x = b;
+
+	int n = A._row;
+	int m = A._column;
+
+	std::vector<int> where (m, -1);
+
+	for (int col = 0, row = 0; col < m && row < n; ++col){
+		int sel = row;
+		for (int i = row; i<n; ++i){								//поиск опорного элемента
+			if (fabs(B.M[i][col]) > fabs(B.M[sel][col]))
+				sel = i;
+		}
+		if (fabs(B.M[sel][col]) < EPS)
+			continue;
+		B.swapRows(sel, row);
+		where[col] = row;
+
+		for (int i = 0; i<n; ++i)
+		if (i != row) {
+			double c = B.M[i][col] / B.M[row][col];
+			for (int j = col; j <= m; ++j)
+				B.M[i][j] -= B.M[row][j] * c;
+		}
+		++row;
 	}
-	else{
+
+	x.full(0.0);
+
+	for (int i = 0; i < m; ++i){
+		if (where[i] != -1)
+			x.M[i][0] = B.M[where[i]][m] / B.M[where[i]][i];
+	}
+	for (int i = 0; i<n; ++i) {
+		double sum = 0;
+		for (int j = 0; j<m; ++j)
+			sum += x.M[j][0] * B.M[i][j];
+		if (fabs(sum - x.M[i][m]) > EPS){
+			std::cout << "0" << std::endl;
+			return;
+		}
+	}
+
+	for (int i = 0; i < m; ++i){
+		if (where[i] == -1)
+			std::cout << "Inf" << std::endl;
+		return;
+	}
+
+	std::cout << "1" << std::endl;
+	return;
+}
+
+void solveLinerSystem(const Matrix& P, const Matrix& L, const Matrix& U, Matrix& x){
+		std::cout << "Solution" << std::endl;
 		Matrix y(3, 1, 'y');
+		
 		for (int i = 0; i < P._row; i++){
 			y.M[i][0] = P.M[i][0];
 			for (int j = 0; j <= i - 1; j++){
@@ -396,10 +413,9 @@ void solveLinerSystem(const Matrix& P, const Matrix& L, const Matrix& U, Matrix&
 			}
 		}
 
-		/*
 		std::cout << "Matrix y:" << std::endl;
 		y.print();
-		*/
+		
 		for (int i = P._row - 1; i >= 0; i--){
 			x.M[i][0] = y.M[i][0];
 			for (int j = P._row - 1; j > i; j--){
@@ -407,11 +423,9 @@ void solveLinerSystem(const Matrix& P, const Matrix& L, const Matrix& U, Matrix&
 			}
 			x.M[i][0] /= U.M[i][i];
 		}
-		/*
+		
 		std::cout << "Result:" << std::endl;
-		x.print();
-		*/
-	}
+		x.print();	
 	return;
 }
 
@@ -426,7 +440,11 @@ double getNumber(Matrix& P1, Matrix& U1, Matrix& P2, Matrix& U2){
 	return x;
 }
 
-void getInverseMatrix( const Matrix& L, const Matrix& U, Matrix& Inv){
+void getInverseMatrix( const Matrix& L, const Matrix& U, Matrix& Inv, bool _issingular){
+	if (_issingular){ 
+		std::cout << "Matrix is singular! Inverse matrix is not exist" << std::endl;
+		return;
+	}
 	for (int i = 0; i < L._row; i++){
 		Matrix Ei(L._row, 1, 'E');
 		Ei.M[i][0] = 1.0;
@@ -442,5 +460,7 @@ void getInverseMatrix( const Matrix& L, const Matrix& U, Matrix& Inv){
 	Inv.print();
 	return;
 }
+
+
 
 #endif
