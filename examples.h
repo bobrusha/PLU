@@ -33,6 +33,17 @@ void initializeExample(const int n){
 			   Matrix x(3, 1, &arr2[0][0], 'x');
 			   b = x;
 	}break;
+	case 3:{
+			   double arr1[3][3] = { { 2, 1, 1 },			// det = -4
+			   { 2, 1, 1 },
+			   { 3, -1, 2 } };
+			   Matrix A(3, 3, &arr1[0][0], 'M');
+			   M = A;
+
+			   double arr2[3][1] = { { 2.0 }, { -2.0 }, { 2.0 } };
+			   Matrix x(3, 1, &arr2[0][0], 'x');
+			   b = x;
+	}
 	}
 	return;
 }

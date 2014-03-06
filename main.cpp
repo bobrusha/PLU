@@ -3,7 +3,7 @@ using namespace std;
 
 int main(){
 
-	initializeExample(2);
+	initializeExample(3);
 	Matrix A(3, 3, 'A');
 	A = M;
 	Matrix B(3, 3, 'B');
@@ -53,10 +53,7 @@ int main(){
 	}
 	else{ 
 		cout << " a) det = " << 0 << endl;
-		
-		Matrix tmp_b(3, 1, 'b');
-		tmp_b = b;
-		A.gaussian_elimination(b);
+		GaussJordanElimination(A, b);
 	}
 	
 

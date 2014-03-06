@@ -346,59 +346,81 @@ void PLU ( Matrix& A, Matrix&B, Matrix& P, Matrix& L, Matrix& U)			//работает пр
 }
 
 void GaussJordanElimination(Matrix& A, Matrix& b){
-	Matrix B (A._row, A._column, 'B');
-	B = A;
-	Matrix x (b._row, b._column, 'x');
-	x = b;
+	Matrix Tmp_A(A._row, A._column + 1, 'T');
 
-	int n = A._row;
-	int m = A._column;
+	for (int i = 0; i < A._row; i++){
+		for (int j = 0; j < A._column; j++){
+			Tmp_A.M[i][j] = A.M[i][j];
+		}
+	}
 
-	std::vector<int> where (m, -1);
+	for (int i = 0; i < A._row; i++){
+		Tmp_A.M[i][A._column] = b.M[i][0];
+	}
+
+	Tmp_A.print();
+
+	std::vector<int> where(A._column, -1);
+	
+
+	const int n = A._row;
+	const int m = A._column;
 
 	for (int col = 0, row = 0; col < m && row < n; ++col){
 		int sel = row;
-		for (int i = row; i<n; ++i){								//поиск опорного элемента
-			if (fabs(B.M[i][col]) > fabs(B.M[sel][col]))
+		for (int i = row; i < n; i++){
+			if (abs(Tmp_A.M[i][col]) > abs(Tmp_A.M[sel][col])){
 				sel = i;
+			}
 		}
-		if (fabs(B.M[sel][col]) < EPS)
+		if (abs(Tmp_A.M[sel][col]) < EPS)
 			continue;
-		B.swapRows(sel, row);
+		for (int i = col; i <= m; i++){
+			std::swap(Tmp_A.M[sel][i], Tmp_A.M[row][i]);
+		}
+
 		where[col] = row;
 
-		for (int i = 0; i<n; ++i)
-		if (i != row) {
-			double c = B.M[i][col] / B.M[row][col];
-			for (int j = col; j <= m; ++j)
-				B.M[i][j] -= B.M[row][j] * c;
+		for (int i = 0; i < n; i++){
+			if (i != row){
+				double tmp = Tmp_A.M[i][col] / Tmp_A.M[row][col];
+				for (int j = col; j <= m; ++j){
+					Tmp_A.M[i][j] -= Tmp_A.M[row][j] * tmp;
+				}
+			}
 		}
+
+		Tmp_A.print();
+
 		++row;
 	}
+	Tmp_A.print();
 
-	x.full(0.0);
+	b.full(0.0);
 
-	for (int i = 0; i < m; ++i){
-		if (where[i] != -1)
-			x.M[i][0] = B.M[where[i]][m] / B.M[where[i]][i];
+	for (int i = 0; i < m; i++){
+		if (where[i] != -1){
+			b.M[i][0] = Tmp_A.M[where[i]][m] / Tmp_A.M[where[i]][i];
+		}
 	}
+	b.print();
+
 	for (int i = 0; i<n; ++i) {
-		double sum = 0;
-		for (int j = 0; j<m; ++j)
-			sum += x.M[j][0] * B.M[i][j];
-		if (fabs(sum - x.M[i][m]) > EPS){
-			std::cout << "0" << std::endl;
+		double sum = 0.0;
+		for (int j = 0; j < m; ++j)
+			sum += b.M[j][0] * Tmp_A.M[i][j];
+		if (abs(sum - Tmp_A.M[i][m]) > EPS){
+			std::cout << "System has not a solution" << std::endl;
 			return;
 		}
 	}
 
-	for (int i = 0; i < m; ++i){
-		if (where[i] == -1)
-			std::cout << "Inf" << std::endl;
-		return;
+	for (int i = 0; i < m; i++){
+		if (where[i] == -1){
+			std::cout << "System has endlessly many solutions" << std::endl;
+			return;
+		}
 	}
-
-	std::cout << "1" << std::endl;
 	return;
 }
 
