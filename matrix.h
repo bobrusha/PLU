@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <conio.h>
 #include <iostream>
+#include <math.h>
 #include <vector>
 
 #define _MATRIX_
@@ -73,7 +74,7 @@ public:
 		for (int i = 0; i < _row; i++)
 			delete[] M[i];
 		_kolvop = 0;
-		std::cout << "You killed me! My name is " << _name << std::endl;
+		//std::cout << "You killed me! My name is " << _name << std::endl;
 	}
 	//=============================================================================== перегрузка операторов
 
@@ -205,26 +206,19 @@ public:
 		double inv_n = 0.0;				// норма обратной матрицы
 		
 		for (int j = 0; j < _column; j++){
-			double tmp = 0.0;
 			for (int i = 0; i < _row; i++){
-				tmp += fabs(M[i][j]);
-			}
-			if (tmp > mtr_n)
-			{
-				mtr_n = tmp;
+				mtr_n += M[i][j]*M[i][j];
 			}
 		}
 
+		mtr_n = sqrt(mtr_n);
+
 		for (int j = 0; j < _column; j++){
-			double tmp = 0.0;
 			for (int i = 0; i < _row; i++){
-				tmp += fabs(Inv.M[i][j]);
-			}
-			if (tmp > inv_n)
-			{
-				inv_n = tmp;
+				inv_n += Inv.M[i][j]*Inv.M[i][j];
 			}
 		}
+		inv_n = sqrt(inv_n);
 
 		std::cout << std::endl<< "e) Condition number =" << mtr_n*inv_n<<std::endl;
 		return (mtr_n*inv_n);
@@ -279,9 +273,7 @@ Matrix& operator * (Matrix& left, const Matrix& right)
 				}
 				if (fabs(T.M[i][j]) < EPS){ T.M[i][j] = 0.0; }
 			}
-			T.print();
 		}
-		T.print();
 		left = T;
 	}
 	return left;
@@ -306,10 +298,10 @@ void PLU ( Matrix& A, Matrix&B, Matrix& P, Matrix& L, Matrix& U)			//работает пр
 			P.swapRows(i, num);
 		}
 
-		if (num == -1){
+		if (tmp == 0){
 			std::cout << "Matrix is singular"<<std::endl;
 			A._issingular = true;
-			return;
+			continue;
 		}
 		for (int j = i + 1; j < A._row; j++) {
 			B.M[j][i] /= B.M[i][i];
@@ -341,11 +333,10 @@ void PLU ( Matrix& A, Matrix&B, Matrix& P, Matrix& L, Matrix& U)			//работает пр
 	L.print();
 	std::cout << "Matrix U:" << std::endl;
 	U.print();
-
 	return;
 }
 
-void GaussJordanElimination(Matrix& A, Matrix& b){
+int GaussJordanElimination(Matrix& A, Matrix& b){
 	Matrix Tmp_A(A._row, A._column + 1, 'T');
 
 	for (int i = 0; i < A._row; i++){
@@ -358,11 +349,8 @@ void GaussJordanElimination(Matrix& A, Matrix& b){
 		Tmp_A.M[i][A._column] = b.M[i][0];
 	}
 
-	Tmp_A.print();
-
 	std::vector<int> where(A._column, -1);
 	
-
 	const int n = A._row;
 	const int m = A._column;
 
@@ -389,12 +377,8 @@ void GaussJordanElimination(Matrix& A, Matrix& b){
 				}
 			}
 		}
-
-		Tmp_A.print();
-
 		++row;
 	}
-	Tmp_A.print();
 
 	b.full(0.0);
 
@@ -403,29 +387,31 @@ void GaussJordanElimination(Matrix& A, Matrix& b){
 			b.M[i][0] = Tmp_A.M[where[i]][m] / Tmp_A.M[where[i]][i];
 		}
 	}
-	b.print();
+
+	for (int i = 0; i < A._row; i++){
+		for (int j = 0; j < A._column; j++){
+			A.M[i][j] = Tmp_A.M[i][j];
+		}
+	}
+	//Tmp_A.print();
 
 	for (int i = 0; i<n; ++i) {
 		double sum = 0.0;
 		for (int j = 0; j < m; ++j)
 			sum += b.M[j][0] * Tmp_A.M[i][j];
 		if (abs(sum - Tmp_A.M[i][m]) > EPS){
-			std::cout << "System has not a solution" << std::endl;
-			return;
+			return 0;
 		}
 	}
 
 	for (int i = 0; i < m; i++){
 		if (where[i] == -1){
-			std::cout << "System has endlessly many solutions" << std::endl;
-			return;
+			return 2;
 		}
 	}
-	return;
+	return 1;
 }
-
 void solveLinerSystem(const Matrix& P, const Matrix& L, const Matrix& U, Matrix& x){
-		std::cout << "Solution" << std::endl;
 		Matrix y(3, 1, 'y');
 		
 		for (int i = 0; i < P._row; i++){
@@ -434,9 +420,6 @@ void solveLinerSystem(const Matrix& P, const Matrix& L, const Matrix& U, Matrix&
 				y.M[i][0] -= L.M[i][j] * y.M[j][0];
 			}
 		}
-
-		std::cout << "Matrix y:" << std::endl;
-		y.print();
 		
 		for (int i = P._row - 1; i >= 0; i--){
 			x.M[i][0] = y.M[i][0];
@@ -445,9 +428,7 @@ void solveLinerSystem(const Matrix& P, const Matrix& L, const Matrix& U, Matrix&
 			}
 			x.M[i][0] /= U.M[i][i];
 		}
-		
-		std::cout << "Result:" << std::endl;
-		x.print();	
+
 	return;
 }
 
